@@ -1,25 +1,23 @@
--- file: qb-jobcenter/fxmanifest.lua
 fx_version 'cerulean'
 game 'gta5'
 lua54 'yes'
-
-author 'TenBan'
-description 'NPC Job Center voi chuc nang thue xe va giao hang'
-version '1.0.0'
+author 'Kakarot'
+description 'Allows players to deliver packages to stores for money while also re-stocking the store'
+version '1.2.0'
 
 shared_scripts {
-    'config.lua',
+	'@qb-core/shared/locale.lua',
+	'config.lua',
+	'locales/en.lua',
 }
 
 client_scripts {
-    'client/main.lua',
+	'@PolyZone/client.lua',
+	'@PolyZone/BoxZone.lua',
+	'@PolyZone/ComboZone.lua',
+	'client/main.lua',
 }
 
 server_scripts {
-    'server/main.lua'
-}
-
-dependencies {
-    'qb-core',
-    'qb-menu'
+	'server/main.lua',
 }

@@ -170,7 +170,8 @@ local function getNewLocation()
         SetBlipRoute(CurrentBlip, true)
         SetBlipRouteColour(CurrentBlip, 3)
     else
-        QBCore.Functions.Notify("Bạn đã hoàn thành tất cả các điểm giao hàng!", "success")
+        -- SỬA LỖI: Sử dụng khóa ngôn ngữ thay vì chuỗi cứng
+        QBCore.Functions.Notify(Lang:t("mission.all_deliveries_complete"), "success")
         if CurrentBlip then RemoveBlip(CurrentBlip); ClearAllBlipRoutes(); CurrentBlip = nil end
     end
 end
@@ -215,7 +216,8 @@ local function GetInTrunk()
             end
         end
     end
-    if not jobVehicle then return QBCore.Functions.Notify("Không tìm thấy xe tải làm việc của bạn ở gần đây!", "error") end
+    -- SỬA LỖI: Sử dụng khóa ngôn ngữ thay vì chuỗi cứng
+    if not jobVehicle then return QBCore.Functions.Notify(Lang:t("error.truck_not_found"), "error") end
     local tv = getTruckerVehicle(jobVehicle)
     if not tv then return QBCore.Functions.Notify(Lang:t("error.vehicle_not_correct"), "error") end
     if not BackDoorsOpen(jobVehicle) then return QBCore.Functions.Notify(Lang:t("error.backdoors_not_open"), "error") end
@@ -241,6 +243,7 @@ local function Deliver()
             LocationsDone[#LocationsDone + 1] = CurrentLocation.id
             TriggerServerEvent("qb-shops:server:RestockShopItems", CurrentLocation.store)
             exports['qb-core']:HideText(); Delivering = false; showMarker = false
+            -- Gửi '1' vì khoản thanh toán này dành cho một điểm giao hàng đã hoàn thành.
             TriggerServerEvent('qb-truckerjob:server:processPayment', 1)
             TriggerServerEvent('qb-trucker:server:nano')
             if CurrentLocation and CurrentLocation.zoneCombo then CurrentLocation.zoneCombo:destroy() end
@@ -346,13 +349,15 @@ CreateThread(function()
             local npcCoords = GetEntityCoords(jobNpc)
             if #(playerCoords - npcCoords) < 2.5 and not IsPedInAnyVehicle(playerPed, false) then
                 sleep = 5; isTextShown = true
-                exports['qb-core']:DrawText("Nhấn [E] để xem danh sách xe", "left")
+                -- SỬA LỖI: Sử dụng khóa ngôn ngữ thay vì chuỗi cứng
+                exports['qb-core']:DrawText(Lang:t("info.job_menu_prompt"), "left")
                 if IsControlJustReleased(0, 38) then MenuGarage() end
             end
         end
         if inVehicleZone and IsPedInAnyVehicle(playerPed, false) then
             sleep = 5; isTextShown = true
-            exports['qb-core']:DrawText("Nhấn [E] để trả xe tải", "left")
+             -- SỬA LỖI: Sử dụng khóa ngôn ngữ thay vì chuỗi cứng
+            exports['qb-core']:DrawText(Lang:t("info.return_truck_prompt"), "left")
             if IsControlJustReleased(0, 38) then TriggerEvent('qb-truckerjob:client:Vehicle') end
         end
         if showMarker then

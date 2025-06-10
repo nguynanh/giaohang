@@ -46,14 +46,16 @@ RegisterNetEvent('qb-truckerjob:server:processPayment', function(drops)
     end
 
     local payment = Config.TruckerJobDropPrice
-    local tax = math.ceil(payment / 100) * Config.TruckerJobPaymentTax
-    local finalPayment = payment - tax
+    -- Đã loại bỏ tính thuế
+    local finalPayment = payment
 
     if finalPayment < 0 then finalPayment = 0 end
     
-    print('[truckerjob] Lương cơ bản: ' .. payment .. ' | Thuế: ' .. tax .. ' | Thực nhận: ' .. finalPayment)
+    print('[truckerjob] Lương cơ bản: ' .. payment .. ' | Thực nhận: ' .. finalPayment)
 
-    Player.Functions.AddJobReputation(1)
+    -- Đã loại bỏ cộng danh tiếng
+    -- Player.Functions.AddJobReputation(1) 
+    
     Player.Functions.AddMoney('bank', finalPayment, 'trucker-salary')
     TriggerClientEvent('QBCore:Notify', src, Lang:t('success.you_earned', { value = finalPayment }), 'success')
     print('[truckerjob] Đã thanh toán thành công cho: ' .. Player.PlayerData.name)

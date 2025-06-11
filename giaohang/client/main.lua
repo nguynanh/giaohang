@@ -160,7 +160,7 @@ local function CreateGoodsPickupZoneAndBlip()
     end)
 
     if goodsPickupBlip then RemoveBlip(goodsPickupBlip) end
-    goodsPickupBlip = AddBlipForCoord(goodsPickupCoords.xyz)
+    goodsPickupBlip = AddBlipForCoord(goodsPickupCoords.x, goodsPickupCoords.y, goodsPickupCoords.z)
     SetBlipSprite(goodsPickupBlip, 198)
     SetBlipDisplay(goodsPickupBlip, 4)
     SetBlipScale(goodsPickupBlip, 0.8)
@@ -200,6 +200,12 @@ local function MenuMissionStart()
             header = "Nhận Đơn Hàng",
             txt = "Bắt đầu một lộ trình giao hàng mới.",
             params = { event = "qb-trucker:client:AcceptMission" }
+        },
+        -- THÊM MỤC HỦY ĐƠN HÀNG TẠI ĐÂY
+        {
+            header = "Hủy Đơn Hàng",
+            txt = "Hủy nhiệm vụ giao hàng hiện tại.",
+            params = { event = "qb-trucker:client:CancelMission" }
         },
         { header = Lang:t("menu.close_menu"), params = { event = "qb-menu:client:closeMenu" } }
     }
@@ -398,6 +404,19 @@ RegisterNetEvent('qb-trucker:client:ReturnRentedVehicle', function()
     else
         QBCore.Functions.Notify("Đây không phải chiếc xe bạn đã thuê.", "error")
     end
+end)
+
+-- SỰ KIỆN HỦY ĐƠN HÀNG (ĐÃ SỬA ĐỔI ĐỂ KHÔNG HOÀN TIỀN CỌC TẠI ĐÂY)
+RegisterNetEvent('qb-trucker:client:CancelMission', function()
+    exports['qb-menu']:closeMenu()
+    if hasAcceptedOrder or CurrentLocation then
+        ResetMissionState() -- Chỉ reset trạng thái nhiệm vụ giao hàng
+        QBCore.Functions.Notify(Lang:t("error.cancelled"), "success") -- Thông báo hủy đơn hàng
+    else
+        QBCore.Functions.Notify("Bạn không có đơn hàng nào để hủy.", "error")
+    end
+    -- **Quan trọng:** Không hoàn tiền cọc thuê xe ở đây.
+    -- Tiền cọc chỉ được hoàn khi xe được trả về đúng vị trí thông qua 'qb-trucker:client:ReturnRentedVehicle'.
 end)
 
 -- ===================================================================================

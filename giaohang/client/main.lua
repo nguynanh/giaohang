@@ -77,7 +77,8 @@ local function CreateDeliveryZone(number)
 end
 
 local function hasDoneLocation(locationId)
-    if LocationsDone and table.type(LocationsDone) ~= "empty" then
+    -- SỬA LỖI: Sử dụng cách kiểm tra bảng rỗng chuẩn của Lua
+    if LocationsDone and #LocationsDone > 0 then
         for _, v in pairs(LocationsDone) do
             if v == locationId then return true end
         end
@@ -86,28 +87,35 @@ local function hasDoneLocation(locationId)
 end
 
 local function getNextDeliveryLocation()
-    local current = 1
-    if Config.TruckerJobFixedLocation then
-        local pos = GetEntityCoords(PlayerPedId(), true)
-        local dist = nil
-        for k, v in pairs(Config.TruckerJobLocations["stores"]) do
-            local dist2 = #(pos - vector3(v.coords.x, v.coords.y, v.coords.z))
-            if dist then
-                if dist2 < dist then
-                    current = k
-                    dist = dist2
-                end
-            else
-                current = k
-                dist = dist2
-            end
-        end
-    else
-        while hasDoneLocation(current) do
-            current = math.random(#Config.TruckerJobLocations["stores"])
+    local availableLocations = {}
+    for k, v in pairs(Config.TruckerJobLocations["stores"]) do
+        if not hasDoneLocation(k) then
+            table.insert(availableLocations, k)
         end
     end
-    return current
+
+    if #availableLocations > 0 then
+        if Config.TruckerJobFixedLocation then
+            -- Tìm địa điểm gần nhất có sẵn
+            local pos = GetEntityCoords(PlayerPedId(), true)
+            local minDist = -1
+            local closestLocId = 0
+            for _, locId in pairs(availableLocations) do
+                local storeCoords = Config.TruckerJobLocations["stores"][locId].coords
+                local dist2 = #(pos - vector3(storeCoords.x, storeCoords.y, storeCoords.z))
+                if minDist == -1 or dist2 < minDist then
+                    minDist = dist2
+                    closestLocId = locId
+                end
+            end
+            return closestLocId
+        else
+            -- Chọn ngẫu nhiên từ các địa điểm có sẵn
+            return availableLocations[math.random(#availableLocations)]
+        end
+    else
+        return 0 -- Không còn địa điểm nào để giao
+    end
 end
 
 local function getNewDeliveryRoute()
@@ -116,6 +124,7 @@ local function getNewDeliveryRoute()
         CurrentLocation = {}
         CurrentLocation.id = locationId
         CurrentLocation.dropcount = math.random(1, 3)
+        currentCount = 0 -- Đặt lại số lượng hộp cho địa điểm mới
         CreateDeliveryZone(locationId)
         local storeCoords = Config.TruckerJobLocations["stores"][locationId].coords
         CurrentBlip = AddBlipForCoord(storeCoords.x, storeCoords.y, storeCoords.z)
@@ -125,7 +134,10 @@ local function getNewDeliveryRoute()
         QBCore.Functions.Notify("Đã nhận lộ trình, hãy đến điểm giao hàng đầu tiên.", "success")
     else
         QBCore.Functions.Notify("Bạn đã hoàn thành tất cả các điểm giao hàng!", "success")
+        -- Chỉ xóa blip và route nếu không còn địa điểm nào và nhiệm vụ hoàn thành hoàn toàn
         if CurrentBlip then RemoveBlip(CurrentBlip); ClearAllBlipRoutes(); CurrentBlip = nil end
+        -- Toàn bộ nhiệm vụ đã hoàn thành, bây giờ mới reset LocationsDone
+        ResetMissionState()
     end
 end
 
@@ -133,8 +145,10 @@ local function returnToJobNpc()
     local jobStartBlip = AddBlipForCoord(Config.TruckerJobLocations["jobstart"].coords.xyz)
     SetBlipRoute(jobStartBlip, true)
     Wait(500)
-    RemoveBlip(jobStartBlip)
+    -- Không xóa blip ngay lập tức, người chơi cần nhìn thấy nó
+    -- RemoveBlip(jobStartBlip)
     returningToStation = true
+    QBCore.Functions.Notify(Lang:t("mission.return_to_station"), "success")
 end
 
 -- NHÓM 3: CÁC HÀM CÀI ĐẶT, DỌN DẸP & MENU
@@ -157,19 +171,26 @@ local function CreateGoodsPickupZoneAndBlip()
     EndTextCommandSetBlipName(goodsPickupBlip)
 end
 
-local function ResetMissionState()
+-- Hàm dọn dẹp chỉ cho một điểm giao hàng hiện tại
+local function ClearCurrentDeliveryPoint()
     if CurrentBlip then RemoveBlip(CurrentBlip); CurrentBlip = nil end
-    if goodsPickupBlip then RemoveBlip(goodsPickupBlip); goodsPickupBlip = nil end
-    if goodsPickupZone then goodsPickupZone:destroy(); goodsPickupZone = nil end
-    if CurrentLocation and CurrentLocation.zoneCombo then CurrentLocation.zoneCombo:destroy() end
+    if CurrentLocation and CurrentLocation.zoneCombo then CurrentLocation.zoneCombo:destroy(); CurrentLocation.zoneCombo = nil end
     ClearAllBlipRoutes()
     CurrentLocation = nil
-    LocationsDone = {}
+    Delivering = false
+    showMarker = false
+end
+
+-- Reset toàn bộ nhiệm vụ, chỉ gọi khi toàn bộ lộ trình hoàn tất hoặc bị hủy
+local function ResetMissionState()
+    ClearCurrentDeliveryPoint()
+    if goodsPickupBlip then RemoveBlip(goodsPickupBlip); goodsPickupBlip = nil end
+    if goodsPickupZone then goodsPickupZone:destroy(); goodsPickupZone = nil end
+    LocationsDone = {} -- Đây là thay đổi quan trọng, chỉ reset tất cả các địa điểm đã hoàn thành ở đây
     returningToStation = false
     hasAcceptedOrder = false
     canPickupGoods = false
-    Delivering = false
-    showMarker = false
+    currentCount = 0 -- Đảm bảo điều này cũng được reset cho nhiệm vụ mới
 end
 
 local function MenuMissionStart()
@@ -277,11 +298,12 @@ local function DeliverGoods()
             LocationsDone[#LocationsDone + 1] = CurrentLocation.id
             TriggerServerEvent('qb-truckerjob:server:processPayment', 1)
             TriggerServerEvent('qb-trucker:server:nano')
-            ResetMissionState()
+            ClearCurrentDeliveryPoint() -- SỬA ĐỔI: Gọi hàm mới để chỉ xóa điểm hiện tại
             if #LocationsDone >= Config.TruckerJobMaxDrops then
-                QBCore.Functions.Notify(Lang:t("mission.return_to_station")); returnToJobNpc()
+                returnToJobNpc()
             else
-                QBCore.Functions.Notify(Lang:t("mission.goto_next_point")); getNewDeliveryRoute()
+                QBCore.Functions.Notify(Lang:t("mission.goto_next_point"));
+                getNewDeliveryRoute()
             end
         else
             QBCore.Functions.Notify(Lang:t("mission.another_box"))
@@ -319,6 +341,7 @@ RegisterNetEvent('qb-trucker:client:AcceptMission', function()
         QBCore.Functions.Notify("Bạn đang có một nhiệm vụ chưa hoàn thành.", "error")
         return
     end
+    -- Khi chấp nhận một nhiệm vụ mới, cần reset toàn bộ trạng thái
     ResetMissionState()
     hasAcceptedOrder = true
     CreateGoodsPickupZoneAndBlip()
@@ -347,6 +370,8 @@ RegisterNetEvent('qb-trucker:client:SpawnVehicle', function()
         SetEntityHeading(veh, coords.w)
         exports['LegacyFuel']:SetFuel(veh, 100.0)
         exports['qb-menu']:closeMenu()
+        SetEntityAsMissionEntity(veh, true, true)
+        TriggerEvent("vehiclekeys:client:SetOwner", QBCore.Functions.GetPlate(veh))
         TaskWarpPedIntoVehicle(PlayerPedId(), veh, -1)
         SetVehicleEngineOn(veh, true, true)
         rentedVehiclePlate = QBCore.Functions.GetPlate(veh)

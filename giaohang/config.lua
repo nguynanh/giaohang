@@ -24,6 +24,9 @@ Config.TruckerJobLocations = {
         { name = "Điểm giao hàng 3", coords = vector3(182.81, -3194.06, 5.72) },
         { name = "Điểm giao hàng 4", coords = vector3(184.92, -3207.8, 5.81) },
         { name = "Điểm giao hàng 5", coords = vector3(171.88, -3224.14, 5.79) },
+        { name = "Điểm giao hàng 6", coords = vector3(185.37, -3123.29, 5.78) },
+        { name = "Điểm giao hàng 7", coords = vector3(175.23, -3136.56, 5.62) },
+        { name = "Điểm giao hàng 8", coords = vector3(185.7, -3151.06, 5.79) },
     }
 }
 
